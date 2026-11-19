@@ -22,15 +22,15 @@ jobs:
           export PSL1GHT="$PS3DEV"
           export PATH="$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin"
           cd StardewPS3
+          sed -i 's/std::snprintf/snprintf/g' src/*.cpp include/*.h
+          for F in src/*.cpp; do sed -i '1i #include <stdio.h>' "$F"; done
           PL="$PS3DEV/portlibs/ppu/lib"
           EXTRA=""
           for L in vorbisfile vorbis ogg FLAC mpg123 modplug mikmod; do
             if [ -f "$PL/lib$L.a" ]; then EXTRA="$EXTRA -l$L"; fi
           done
           echo "EXTRA_LIBS=$EXTRA"
-          make -f Makefile.ps3 check || true
-          make -f Makefile.ps3 info
-          make -f Makefile.ps3 pkg EXTRA_LIBS="$EXTRA"
+          make -f Makefile.ps3 pkg EXTRA_LIBS="$EXTRA" -k 2>&1 | tail -n 150
           mkdir -p ../dist
           cp *.pkg ../dist/
           ls -l ../dist
