@@ -1,0 +1,46 @@
+name: Build Stardew PS3 PKG
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o projeto
+        uses: actions/checkout@v4
+
+      - name: Extrair o zip
+        run: unzip -q -o StardewPS3*.zip
+
+      - name: Criar script de build
+        run: |
+          cat > build.sh <<'EOF'
+          set -e
+          : "${PS3DEV:=/usr/local/ps3dev}"; export PS3DEV
+          export PSL1GHT="$PS3DEV"
+          export PATH="$PATH:$PS3DEV/bin:$PS3DEV/ppu/bin:$PS3DEV/spu/bin"
+          cd StardewPS3
+          PL="$PS3DEV/portlibs/ppu/lib"
+          EXTRA=""
+          for L in vorbisfile vorbis ogg FLAC mpg123 modplug mikmod; do
+            if [ -f "$PL/lib$L.a" ]; then EXTRA="$EXTRA -l$L"; fi
+          done
+          echo "EXTRA_LIBS=$EXTRA"
+          make -f Makefile.ps3 check || true
+          make -f Makefile.ps3 info
+          make -f Makefile.ps3 pkg EXTRA_LIBS="$EXTRA"
+          mkdir -p ../dist
+          cp *.pkg ../dist/
+          ls -l ../dist
+          EOF
+
+      - name: Compilar dentro da imagem ps3dev com SDL2
+        run: docker run --rm -v "$PWD":/build -w /build hldtux/ps3dev-sdl2:latest sh build.sh
+
+      - name: Enviar o .pkg
+        uses: actions/upload-artifact@v4
+        with:
+          name: StardewPS3-pkg
+          path: dist/*.pkg
